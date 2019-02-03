@@ -1,0 +1,64 @@
+#Requires WolvSk
+
+afk status change:
+    if player is not afk:
+        if player don't have permission "afk.teleport.bypass":
+            console command "/afksafezone %player%"
+
+command /afksafezone [<text>]:
+    trigger:
+        set {_player} to arg-1 parsed as player
+        if distance between location of {_player} and {afk.safezone} is less than 1000:
+            stop trigger
+        set {_afklocation} to location of block below {_player}
+        set {_afkcancel} to false
+        if {afk.safezone} is set:
+            send "&6You have been teleported to an AFK Safezone." to {_player}
+            send "&6Use &c/afkback&6 to teleport back to the last AFK location." to {_player}
+            set {afk.lastlocation::%{_player}%} to location of block below {_player}
+            teleport {_player} to {afk.safezone}
+        else:
+            send "&rAFK Safezone is not set." to player
+            
+command /setafksafezone:
+    permission: admin
+    trigger:
+        set {afk.safezone} to location of block below player
+        message "&6AFK Safezone set."
+
+command /afkback:
+    trigger:
+        if {afk.lastlocation::%player%} is not set:
+            message "&6You are not AFK earlier."
+        else:
+            if player is afk:
+                console command "/afk %player%"
+            set {_location} to location of block below player
+            set {_moved} to false
+            message "&6Teleportation will commence in &c3 seconds&6. Move to cancel."
+            loop 3 times:
+                wait 1 seconds
+                if {_location} is not location of block below player:
+                    message "&4Pending teleportation request cancelled."
+                    stop trigger
+            if {_moved} is false:
+                message "&6Teleportation commecing..."
+                teleport player to {afk.lastlocation::%player%}
+                clear {afk.lastlocation::%player%}
+
+on vehicle enter: 
+    if entity is minecart or boat:
+        if passenger of entity is a player:
+            set {_location} to location of entity
+            set {_player} to "%passenger of entity%" parsed as player
+            set {afk.vehicle.%{_player}%} to now
+            wait 5 minutes
+            if {afk.vehicle.%passenger of entity%} is set:
+                if distance between location of {_player} and {_location} is less than 16:
+                    {_player} command "/afk"
+                    clear {afk.vehicle.%{_player}%}
+
+on vehicle exit:
+    if entity is a player:
+        set {_player} to "%passenger of entity%" parsed as player
+        clear {afk.vehicle.%{_player}%}
